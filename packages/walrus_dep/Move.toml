@@ -1,11 +1,10 @@
 [package]
-name = "captur"
-edition = "2024.beta" # edition = "legacy" to use legacy (pre-2024) Move
+name = "walrus_dep"
+edition = "2024.beta"
 
 [dependencies]
 Walrus = { git = "https://github.com/MystenLabs/walrus.git", rev = "main", subdir = "contracts/walrus" }
-token = { local = "../token"}
 
 [addresses]
-captur = "0x0"
-
+sui = "0x2"
+walrus_dep = "0x0"
