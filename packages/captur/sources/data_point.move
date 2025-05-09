@@ -28,6 +28,14 @@ public fun sender(self: &DataPoint): address {
     self.sender
 }
 
+public fun status(self: &DataPoint): String {
+    self.status
+}
+
+public fun is_processed(self: &DataPoint): bool {
+    self.status != new_status()
+}
+
 // === Public-Package Functions ===
 public(package) fun new(
     blob: Blob,

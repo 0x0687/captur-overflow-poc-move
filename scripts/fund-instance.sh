@@ -1,0 +1,18 @@
+TOKEN_PACKAGE_ID=0xb59c78b60ac25947a203c582792f1cd28f20bf76518d24cb30edd086680df9d4
+TREASURY_CAP_ID=0x9108d0fe1a86ea860a99a6f5bec02dd8bbfe80393c3717fa3ea40bc038972bab
+
+# mint tokens to yourself
+sui client ptb \
+--move-call sui::tx_context::sender \
+--assign sender \
+--move-call $TOKEN_PACKAGE_ID::capt::mint @$TREASURY_CAP_ID 1000000000 sender
+
+# deposit coin
+CURRENT_PACKAGE_ID=0x627660a919eb9497cb9d91038a26f335f5a338f13efa84993959495dc89a3b4f
+ADMIN_CAP_ID=0x8730e1d1e8cae6275c4ff2518b8e6a317ee002bc25bc3104137e894a5580c055
+INSTANCE_ID=0x50301759db4156801506b0d210caa9be32dd72ffb0283d69f848929f03b55eae
+
+COIN_ID=0x7fd2bc5694cf9dd2422f4790b13e392c23e950966c70e880fa0505bbce19b2cd
+
+sui client ptb \
+--move-call $CURRENT_PACKAGE_ID::captur::deposit @$INSTANCE_ID @$ADMIN_CAP_ID @$COIN_ID

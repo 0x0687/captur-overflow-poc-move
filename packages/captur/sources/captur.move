@@ -2,7 +2,6 @@ module captur::captur;
 
 use captur::constants::default_price_per_epoch;
 use captur::data_point::{Self, DataPoint};
-use captur::state::{Self, State};
 use captur::vault::{Self, Vault};
 use std::string::String;
 use sui::coin::Coin;
@@ -10,6 +9,10 @@ use sui::event::emit;
 use sui::transfer::{share_object, public_transfer};
 use token::capt::CAPT;
 use walrus::blob::Blob;
+use captur::subscription::Subscription;
+
+// === Errors ===
+const ENoAccess: u64 = 1;
 
 // === Structs ===
 public struct BlobSubmittedEvent has copy, drop {
@@ -25,13 +28,17 @@ public struct DataProcessedEvent has copy, drop {
 public struct Captur has key {
     id: UID,
     vault: Vault,
-    state: State,
     price_per_epoch: u64,
 }
 
 /// The cap that is used to perform administrator functions.
 public struct CapturAdminCap has key, store {
     id: UID,
+}
+
+/// The cap that can be used to process user blobs
+public struct ProcessingCap has key, store {
+    id: UID
 }
 
 // OTW
@@ -55,13 +62,13 @@ public fun submit_data(blob: Blob, age_range: String, gender: String, ctx: &mut 
 }
 
 #[allow(lint(self_transfer))]
-public fun subscribe(self: &mut Captur, coin: Coin<CAPT>, ctx: &mut TxContext) {
+public fun subscribe(self: &mut Captur, subscription: &mut Subscription, coin: Coin<CAPT>, ctx: &mut TxContext) {
     let mut balance = coin.into_balance();
 
     // Calculate the maxmimum number of epochs
     let nb_of_epochs = balance.value() / self.price_per_epoch();
     let sender = ctx.sender();
-    self.state.subscribe(sender, nb_of_epochs, ctx);
+    subscription.extend( nb_of_epochs, ctx);
 
     // Process the payment in vault
     let price = nb_of_epochs * self.price_per_epoch();
@@ -82,9 +89,16 @@ public fun deposit(self: &mut Captur, _cap: &CapturAdminCap, coin: Coin<CAPT>) {
     self.vault.deposit(coin);
 }
 
+public fun mint_processing_cap(_cap: &CapturAdminCap, ctx: &mut TxContext): ProcessingCap {
+    let cap = ProcessingCap {
+        id: object::new(ctx)
+    };
+    cap
+}
+
 public fun approve_data(
     self: &mut Captur,
-    _cap: &CapturAdminCap,
+    _cap: &ProcessingCap,
     data_point: &mut DataPoint,
     value: u64,
     ctx: &mut TxContext,
@@ -100,12 +114,11 @@ public fun approve_data(
     });
 }
 
-// == Private Functions ==
+// === Private Functions ===
 fun init(_: CAPTUR, ctx: &mut TxContext) {
     // Create and share a Captur instance
     let captur = Captur {
         id: object::new(ctx),
-        state: state::new(ctx),
         vault: vault::empty(),
         price_per_epoch: default_price_per_epoch(),
     };
@@ -115,4 +128,10 @@ fun init(_: CAPTUR, ctx: &mut TxContext) {
         id: object::new(ctx),
     };
     transfer::public_transfer(admin, ctx.sender());
+}
+
+// === Access control ===
+/// Processors can only read unprocess data
+entry fun seal_approve(_id: vector<u8>, _cap: &ProcessingCap, data: &DataPoint) {
+    assert!(!data.is_processed(), ENoAccess);
 }
